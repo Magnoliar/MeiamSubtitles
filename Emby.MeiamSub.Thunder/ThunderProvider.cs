@@ -484,7 +484,7 @@ namespace Emby.MeiamSub.Thunder
                 request.Method = "POST";
                 request.ContentType = "application/json";
                 request.Headers.Add("Authorization", $"Bearer {MainPlugin.Options.AIApiKey}");
-                request.Timeout = 8000;
+                request.Timeout = (MainPlugin.Options.AITimeout > 0 ? MainPlugin.Options.AITimeout : 12) * 1000;
                 var bytes = Encoding.UTF8.GetBytes(jsonBody);
                 request.ContentLength = bytes.Length;
 

@@ -467,7 +467,8 @@ namespace Jellyfin.MeiamSub.Thunder
                     ? "https://tokenhub.tencentmaas.com/v1/chat/completions"
                     : config.AIEndpoint;
 
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                var timeout = config.AITimeout > 0 ? config.AITimeout : 12;
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeout));
                 using var httpClient = _httpClientFactory.CreateClient(Name);
                 var json = JsonSerializer.Serialize(requestBody, _deserializeOptions);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");

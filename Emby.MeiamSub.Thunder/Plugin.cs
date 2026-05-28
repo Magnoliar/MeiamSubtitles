@@ -95,6 +95,9 @@ namespace Emby.MeiamSub.Thunder
         [Description("AI API 端点 (OpenAI 兼容格式)")]
         public string AIEndpoint { get; set; }
 
+        [Description("AI 请求超时 (秒)")]
+        public int AITimeout { get; set; }
+
         public PluginConfiguration()
         {
             // 默认值
@@ -102,6 +105,7 @@ namespace Emby.MeiamSub.Thunder
             EnableAIFilter = false;
             AIModel = "deepseek-v4-flash";
             AIEndpoint = "https://tokenhub.tencentmaas.com/v1/chat/completions";
+            AITimeout = 12;
         }
     }
 }

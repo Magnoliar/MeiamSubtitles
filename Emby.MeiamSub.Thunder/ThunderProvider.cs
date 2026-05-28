@@ -158,13 +158,13 @@ namespace Emby.MeiamSub.Thunder
 
                         var subtitles = subtitleResponse.Data.Where(m => !string.IsNullOrEmpty(m.Name));
 
-                        var remoteSubtitles = new List<RemoteSubtitleInfo>();
+                        var subtitleEntries = new List<(RemoteSubtitleInfo Info, int FpScore, int Score)>();
 
                         if (subtitles.Count() > 0)
                         {
                             foreach (var item in subtitles)
                             {
-                                remoteSubtitles.Add(new RemoteSubtitleInfo()
+                                subtitleEntries.Add((new RemoteSubtitleInfo()
                                 {
                                     Id = Base64Encode(_jsonSerializer.SerializeToString(new DownloadSubInfo
                                     {
@@ -180,9 +180,18 @@ namespace Emby.MeiamSub.Thunder
                                     Format = item.Ext,
                                     Comment = $"Format : {item.Ext}",
                                     IsHashMatch = cid == item.Cid,
-                                });
+                                }, item.FingerprintfScore, item.Score));
                             }
                         }
+
+                        var remoteSubtitles = subtitleEntries
+                            .OrderByDescending(e => e.Info.IsHashMatch)
+                            .ThenByDescending(e => ContainsJingJiao(e.Info.Name))
+                            .ThenByDescending(e => GetFormatPriority(e.Info.Format))
+                            .ThenByDescending(e => e.FpScore)
+                            .ThenByDescending(e => e.Score)
+                            .Select(e => e.Info)
+                            .ToList();
 
                         _logger.Info("{0} Search | Summary -> Get  {1}  Subtitles", new object[2] { Name, remoteSubtitles.Count });
 
@@ -293,6 +302,26 @@ namespace Emby.MeiamSub.Thunder
         {
             var base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
             return Encoding.UTF8.GetString(base64EncodedBytes);
+        }
+
+        /// <summary>
+        /// 检查名称是否包含"精校"标记
+        /// </summary>
+        private static bool ContainsJingJiao(string name)
+        {
+            return !string.IsNullOrEmpty(name) && name.Contains("精校", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 格式优先级: ass/ssa > srt > 其他
+        /// </summary>
+        private static int GetFormatPriority(string format)
+        {
+            if (string.IsNullOrEmpty(format)) return 0;
+            var f = format.ToLower();
+            if (f.Contains(ASS) || f.Contains(SSA)) return 2;
+            if (f.Contains(SRT)) return 1;
+            return 0;
         }
 
         /// <summary>

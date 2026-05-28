@@ -1,0 +1,48 @@
+name: Build MeiamSubtitles
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build Release
+        run: dotnet build -c Release --no-restore
+
+      - name: Upload Emby.Shooter DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Emby.MeiamSub.Shooter
+          path: Release/Emby.MeiamSub.Shooter.dll
+
+      - name: Upload Emby.Thunder DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Emby.MeiamSub.Thunder
+          path: Release/Emby.MeiamSub.Thunder.dll
+
+      - name: Upload Jellyfin.Shooter DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jellyfin.MeiamSub.Shooter
+          path: Release/Jellyfin.MeiamSub.Shooter.dll
+
+      - name: Upload Jellyfin.Thunder DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jellyfin.MeiamSub.Thunder
+          path: Release/Jellyfin.MeiamSub.Thunder.dll

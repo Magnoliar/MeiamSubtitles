@@ -202,6 +202,7 @@ namespace Jellyfin.MeiamSub.Shooter
                         {
                             foreach (var subFile in subFileInfo.Files)
                             {
+                                var subFileName = Path.GetFileName(subFile.Link);
                                 remoteSubtitles.Add(new RemoteSubtitleInfo()
                                 {
                                     Id = Base64Encode(JsonSerializer.Serialize(new DownloadSubInfo
@@ -211,7 +212,7 @@ namespace Jellyfin.MeiamSub.Shooter
                                         Language = request.Language,
                                         TwoLetterISOLanguageName = request.TwoLetterISOLanguageName,
                                     })),
-                                    Name = $"[MEIAMSUB] {Path.GetFileName(request.MediaPath)} | {request.TwoLetterISOLanguageName} | 射手",
+                                    Name = $"[MEIAMSUB] {subFileName} | {request.TwoLetterISOLanguageName} | 射手",
                                     Author = "Meiam ",
                                     ProviderName = $"{Name}",
                                     Format = subFile.Ext,
@@ -220,6 +221,11 @@ namespace Jellyfin.MeiamSub.Shooter
                                 });
                             }
                         }
+
+                        remoteSubtitles = remoteSubtitles
+                            .OrderByDescending(s => ContainsJingJiao(s.Name))
+                            .ThenByDescending(s => GetFormatPriority(s.Format))
+                            .ToList();
 
                         _logger.LogInformation($"{Name} Search | Summary -> Get  {remoteSubtitles.Count}  Subtitles");
 
@@ -333,6 +339,26 @@ namespace Jellyfin.MeiamSub.Shooter
         {
             var base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
             return Encoding.UTF8.GetString(base64EncodedBytes);
+        }
+
+        /// <summary>
+        /// 检查名称是否包含"精校"标记
+        /// </summary>
+        private static bool ContainsJingJiao(string name)
+        {
+            return !string.IsNullOrEmpty(name) && name.Contains("精校", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 格式优先级: ass/ssa > srt > 其他
+        /// </summary>
+        private static int GetFormatPriority(string format)
+        {
+            if (string.IsNullOrEmpty(format)) return 0;
+            var f = format.ToLower();
+            if (f.Contains(ASS) || f.Contains(SSA)) return 2;
+            if (f.Contains(SRT)) return 1;
+            return 0;
         }
 
         /// <summary>

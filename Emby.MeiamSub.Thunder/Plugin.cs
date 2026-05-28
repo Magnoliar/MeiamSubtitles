@@ -83,10 +83,21 @@ namespace Emby.MeiamSub.Thunder
         [Description("勾选此项后，使用元数据中的剧集名称和季集编号搜索字幕")]
         public bool EnableUseMetadata { get; set; }
 
+        [Description("启用 AI 智能筛选字幕（需要 API Key）")]
+        public bool EnableAIFilter { get; set; }
+
+        [Description("AI API Key")]
+        public string AIApiKey { get; set; }
+
+        [Description("AI 模型名称")]
+        public string AIModel { get; set; }
+
         public PluginConfiguration()
         {
             // 默认值
             EnableUseMetadata = false;
+            EnableAIFilter = false;
+            AIModel = "deepseek-v4-flash";
         }
     }
 }

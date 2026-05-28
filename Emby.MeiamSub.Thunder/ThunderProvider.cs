@@ -194,6 +194,12 @@ namespace Emby.MeiamSub.Thunder
                             .Select(e => e.Info)
                             .ToList();
 
+                        // AI 智能筛选
+                        if (MainPlugin.Options.EnableAIFilter && !string.IsNullOrEmpty(MainPlugin.Options.AIApiKey) && remoteSubtitles.Count > 2)
+                        {
+                            remoteSubtitles = await FilterSubtitlesWithAI(remoteSubtitles, MovieName);
+                        }
+
                         _logger.Info("{0} Search | Summary -> Get  {1}  Subtitles", new object[2] { Name, remoteSubtitles.Count });
 
                         return remoteSubtitles;
@@ -432,6 +438,73 @@ namespace Emby.MeiamSub.Thunder
                 }
             }
         }
+
+        /// <summary>
+        /// 使用 AI 筛选最佳字幕，将推荐结果排到首位
+        /// </summary>
+        private async Task<List<RemoteSubtitleInfo>> FilterSubtitlesWithAI(List<RemoteSubtitleInfo> candidates, string videoName)
+        {
+            try
+            {
+                var topCandidates = candidates.Take(5).ToList();
+                var candidateList = string.Join("\n", topCandidates.Select((s, i) => $"{i + 1}. {s.Name}"));
+
+                var systemPrompt = "你是字幕筛选助手。根据视频文件名，从候选字幕列表中选出最匹配的一个。只返回最佳字幕的序号数字，不要解释。";
+                var userMessage = $"视频文件: {videoName}\n候选字幕:\n{candidateList}";
+
+                var jsonBody = _jsonSerializer.SerializeToString(new
+                {
+                    model = MainPlugin.Options.AIModel,
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = userMessage }
+                    },
+                    stream = false
+                });
+
+                var request = WebRequest.Create("https://tokenhub.tencentmaas.com/v1/chat/completions") as HttpWebRequest;
+                request.Method = "POST";
+                request.ContentType = "application/json";
+                request.Headers.Add("Authorization", $"Bearer {MainPlugin.Options.AIApiKey}");
+                request.Timeout = 8000;
+                var bytes = Encoding.UTF8.GetBytes(jsonBody);
+                request.ContentLength = bytes.Length;
+
+                using (var reqStream = await request.GetRequestStreamAsync())
+                {
+                    await reqStream.WriteAsync(bytes, 0, bytes.Length);
+                }
+
+                using (var response = await request.GetResponseAsync() as HttpWebResponse)
+                using (var reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                {
+                    var responseBody = await reader.ReadToEndAsync();
+                    _logger.Info("{0} AI Filter | Response -> {1}", new object[2] { Name, responseBody });
+
+                    var responseObj = _jsonSerializer.DeserializeFromString<AIResponse>(responseBody);
+                    if (responseObj?.Choices?.Length > 0)
+                    {
+                        var aiReply = responseObj.Choices[0].Message.Content.Trim();
+                        if (int.TryParse(new string(aiReply.Where(char.IsDigit).ToArray()), out int index) && index >= 1 && index <= topCandidates.Count)
+                        {
+                            var bestSub = topCandidates[index - 1];
+                            var reordered = new List<RemoteSubtitleInfo> { bestSub };
+                            reordered.AddRange(candidates.Where(s => s != bestSub));
+                            _logger.Info("{0} AI Filter | Recommended -> [{1}] {2}", new object[3] { Name, index, bestSub.Name });
+                            return reordered;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("{0} AI Filter | Exception -> [{1}] {2} (fallback to sort)", Name, ex.GetType().Name, ex.Message);
+            }
+
+            return candidates;
+        }
+
         #endregion
     }
 }

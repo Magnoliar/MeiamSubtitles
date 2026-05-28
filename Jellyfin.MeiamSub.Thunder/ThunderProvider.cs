@@ -181,6 +181,14 @@ namespace Jellyfin.MeiamSub.Thunder
                             .Select(e => e.Info)
                             .ToList();
 
+                        // AI 智能筛选
+                        if (Plugin.Instance?.Configuration?.EnableAIFilter == true
+                            && !string.IsNullOrEmpty(Plugin.Instance.Configuration.AIApiKey)
+                            && remoteSubtitles.Count > 2)
+                        {
+                            remoteSubtitles = await FilterSubtitlesWithAI(remoteSubtitles, fileName);
+                        }
+
                         _logger.LogInformation($"{Name} Search | Summary -> Get  {subtitles.Count()}  Subtitles");
 
                         return remoteSubtitles;
@@ -416,6 +424,68 @@ namespace Jellyfin.MeiamSub.Thunder
                 }
             }
         }
+
+        /// <summary>
+        /// 使用 AI 筛选最佳字幕，将推荐结果排到首位
+        /// </summary>
+        private async Task<List<RemoteSubtitleInfo>> FilterSubtitlesWithAI(List<RemoteSubtitleInfo> candidates, string videoName)
+        {
+            try
+            {
+                var config = Plugin.Instance.Configuration;
+                var topCandidates = candidates.Take(5).ToList();
+                var candidateList = string.Join("\n", topCandidates.Select((s, i) => $"{i + 1}. {s.Name}"));
+
+                var systemPrompt = "你是字幕筛选助手。根据视频文件名，从候选字幕列表中选出最匹配的一个。只返回最佳字幕的序号数字，不要解释。";
+                var userMessage = $"视频文件: {videoName}\n候选字幕:\n{candidateList}";
+
+                var requestBody = new
+                {
+                    model = config.AIModel,
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = userMessage }
+                    },
+                    stream = false
+                };
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                using var httpClient = _httpClientFactory.CreateClient(Name);
+                var json = JsonSerializer.Serialize(requestBody, _deserializeOptions);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                content.Headers.TryAddWithoutValidation("Authorization", $"Bearer {config.AIApiKey}");
+
+                var response = await httpClient.PostAsync("https://tokenhub.tencentmaas.com/v1/chat/completions", content, cts.Token);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation($"{Name} AI Filter | Response -> {responseBody}");
+
+                    var responseObj = JsonSerializer.Deserialize<AIResponse>(responseBody, _deserializeOptions);
+                    if (responseObj?.Choices?.Length > 0)
+                    {
+                        var aiReply = responseObj.Choices[0].Message.Content.Trim();
+                        if (int.TryParse(new string(aiReply.Where(char.IsDigit).ToArray()), out int index) && index >= 1 && index <= topCandidates.Count)
+                        {
+                            var bestSub = topCandidates[index - 1];
+                            var reordered = new List<RemoteSubtitleInfo> { bestSub };
+                            reordered.AddRange(candidates.Where(s => s != bestSub));
+                            _logger.LogInformation($"{Name} AI Filter | Recommended -> [{index}] {bestSub.Name}");
+                            return reordered;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"{Name} AI Filter | Exception -> {ex.Message} (fallback to sort)");
+            }
+
+            return candidates;
+        }
+
         #endregion
     }
 }

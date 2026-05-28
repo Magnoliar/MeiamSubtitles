@@ -449,7 +449,13 @@ namespace Emby.MeiamSub.Thunder
                 var topCandidates = candidates.Take(5).ToList();
                 var candidateList = string.Join("\n", topCandidates.Select((s, i) => $"{i + 1}. {s.Name}"));
 
-                var systemPrompt = "你是字幕筛选助手。根据视频文件名，从候选字幕列表中选出最匹配的一个。只返回最佳字幕的序号数字，不要解释。";
+                var systemPrompt = @"你是字幕筛选助手。根据视频文件名，从候选字幕列表中选出最匹配的一个。
+规则：
+1. 只输出一个阿拉伯数字（1-5），代表最佳字幕的序号
+2. 不要输出任何其他文字、标点或解释
+3. 优先选择名称与视频文件最相似的字幕
+4. 如果都相似，优先选择带""精校""字样的
+示例输出：3";
                 var userMessage = $"视频文件: {videoName}\n候选字幕:\n{candidateList}";
 
                 var jsonBody = _jsonSerializer.SerializeToString(new
@@ -486,7 +492,8 @@ namespace Emby.MeiamSub.Thunder
                     if (responseObj?.Choices?.Length > 0)
                     {
                         var aiReply = responseObj.Choices[0].Message.Content.Trim();
-                        if (int.TryParse(new string(aiReply.Where(char.IsDigit).ToArray()), out int index) && index >= 1 && index <= topCandidates.Count)
+                        var firstDigit = aiReply.FirstOrDefault(char.IsDigit);
+                        if (firstDigit != default && int.TryParse(firstDigit.ToString(), out int index) && index >= 1 && index <= topCandidates.Count)
                         {
                             var bestSub = topCandidates[index - 1];
                             var reordered = new List<RemoteSubtitleInfo> { bestSub };

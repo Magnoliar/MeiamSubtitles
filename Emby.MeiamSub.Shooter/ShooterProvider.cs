@@ -97,6 +97,7 @@ namespace Emby.MeiamSub.Shooter
                 }
 
                 FileInfo fileInfo = new FileInfo(request.MediaPath);
+                var videoFileName = Path.GetFileName(request.MediaPath);
 
                 var stopWatch = Stopwatch.StartNew();
                 var hash = await ComputeFileHashAsync(fileInfo);
@@ -180,7 +181,8 @@ namespace Emby.MeiamSub.Shooter
                         }
 
                         remoteSubtitles = remoteSubtitles
-                            .OrderByDescending(s => ContainsJingJiao(s.Name))
+                            .OrderByDescending(s => ComputeNameSimilarity(videoFileName, s.Name))
+                            .ThenByDescending(s => ContainsJingJiao(s.Name))
                             .ThenByDescending(s => GetFormatPriority(s.Format))
                             .ToList();
                         _logger.Info("{0} Search | Summary -> Get  {1}  Subtitles", new object[2] { Name, remoteSubtitles.Count });
@@ -302,6 +304,19 @@ namespace Emby.MeiamSub.Shooter
         private static bool ContainsJingJiao(string name)
         {
             return !string.IsNullOrEmpty(name) && name.Contains("精校", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 计算视频名称与字幕名称的相似度 (0-1)
+        /// </summary>
+        private static double ComputeNameSimilarity(string videoName, string subtitleName)
+        {
+            if (string.IsNullOrEmpty(videoName) || string.IsNullOrEmpty(subtitleName)) return 0;
+            var cleanVideo = new string(videoName.Where(char.IsLetterOrDigit).ToArray()).ToLower();
+            var cleanSub = new string(subtitleName.Where(char.IsLetterOrDigit).ToArray()).ToLower();
+            if (cleanVideo.Length == 0) return 0;
+            var matched = cleanVideo.Count(c => cleanSub.Contains(c));
+            return (double)matched / cleanVideo.Length;
         }
 
         /// <summary>

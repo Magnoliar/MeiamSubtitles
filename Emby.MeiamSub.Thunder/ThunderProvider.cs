@@ -186,6 +186,7 @@ namespace Emby.MeiamSub.Thunder
 
                         var remoteSubtitles = subtitleEntries
                             .OrderByDescending(e => e.Info.IsHashMatch)
+                            .ThenByDescending(e => ComputeNameSimilarity(MovieName, e.Info.Name))
                             .ThenByDescending(e => ContainsJingJiao(e.Info.Name))
                             .ThenByDescending(e => GetFormatPriority(e.Info.Format))
                             .ThenByDescending(e => e.FpScore)
@@ -310,6 +311,20 @@ namespace Emby.MeiamSub.Thunder
         private static bool ContainsJingJiao(string name)
         {
             return !string.IsNullOrEmpty(name) && name.Contains("精校", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 计算视频名称与字幕名称的相似度 (0-1)
+        /// 去除特殊字符后，统计视频名有多少字符出现在字幕名中
+        /// </summary>
+        private static double ComputeNameSimilarity(string videoName, string subtitleName)
+        {
+            if (string.IsNullOrEmpty(videoName) || string.IsNullOrEmpty(subtitleName)) return 0;
+            var cleanVideo = new string(videoName.Where(char.IsLetterOrDigit).ToArray()).ToLower();
+            var cleanSub = new string(subtitleName.Where(char.IsLetterOrDigit).ToArray()).ToLower();
+            if (cleanVideo.Length == 0) return 0;
+            var matched = cleanVideo.Count(c => cleanSub.Contains(c));
+            return (double)matched / cleanVideo.Length;
         }
 
         /// <summary>

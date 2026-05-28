@@ -92,12 +92,16 @@ namespace Emby.MeiamSub.Thunder
         [Description("AI 模型名称")]
         public string AIModel { get; set; }
 
+        [Description("AI API 端点 (OpenAI 兼容格式)")]
+        public string AIEndpoint { get; set; }
+
         public PluginConfiguration()
         {
             // 默认值
             EnableUseMetadata = false;
             EnableAIFilter = false;
             AIModel = "deepseek-v4-flash";
+            AIEndpoint = "https://tokenhub.tencentmaas.com/v1/chat/completions";
         }
     }
 }

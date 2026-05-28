@@ -9,5 +9,7 @@ namespace Jellyfin.MeiamSub.Thunder.Configuration
         public string AIApiKey { get; set; }
 
         public string AIModel { get; set; } = "deepseek-v4-flash";
+
+        public string AIEndpoint { get; set; } = "https://tokenhub.tencentmaas.com/v1/chat/completions";
     }
 }

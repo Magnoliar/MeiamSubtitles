@@ -174,7 +174,7 @@ namespace Jellyfin.MeiamSub.Thunder
                         var remoteSubtitles = subtitleEntries
                             .OrderByDescending(e => e.Info.IsHashMatch)
                             .ThenByDescending(e => ComputeNameSimilarity(fileName, e.Info.Name))
-                            .ThenByDescending(e => ContainsJingJiao(e.Info.Name))
+                            .ThenByDescending(e => GetQualityScore(e.Info.Name))
                             .ThenByDescending(e => GetFormatPriority(e.Info.Format))
                             .ThenByDescending(e => e.FpScore)
                             .ThenByDescending(e => e.Score)
@@ -302,11 +302,17 @@ namespace Jellyfin.MeiamSub.Thunder
         }
 
         /// <summary>
-        /// 检查名称是否包含"精校"标记
+        /// 字幕质量关键词评分：特效(5) > 精校(4) > 官方(3) > 简中(2) > 中文(1)
         /// </summary>
-        private static bool ContainsJingJiao(string name)
+        private static int GetQualityScore(string name)
         {
-            return !string.IsNullOrEmpty(name) && name.Contains("精校", StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(name)) return 0;
+            if (name.Contains("特效", StringComparison.OrdinalIgnoreCase)) return 5;
+            if (name.Contains("精校", StringComparison.OrdinalIgnoreCase)) return 4;
+            if (name.Contains("官方", StringComparison.OrdinalIgnoreCase)) return 3;
+            if (name.Contains("简中", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (name.Contains("中文", StringComparison.OrdinalIgnoreCase)) return 1;
+            return 0;
         }
 
         /// <summary>
@@ -426,7 +432,7 @@ namespace Jellyfin.MeiamSub.Thunder
         }
 
         /// <summary>
-        /// 使用 AI 筛选最佳字幕，将推荐结果排到首位
+        /// 使用 AI 筛选字幕，返回推荐序列
         /// </summary>
         private async Task<List<RemoteSubtitleInfo>> FilterSubtitlesWithAI(List<RemoteSubtitleInfo> candidates, string videoName)
         {
@@ -436,13 +442,14 @@ namespace Jellyfin.MeiamSub.Thunder
                 var topCandidates = candidates.Take(5).ToList();
                 var candidateList = string.Join("\n", topCandidates.Select((s, i) => $"{i + 1}. {s.Name}"));
 
-                var systemPrompt = @"你是字幕筛选助手。根据视频文件名，从候选字幕列表中选出最匹配的一个。
+                var systemPrompt = @"你是字幕筛选助手。根据视频文件名，对候选字幕列表进行排序。
 规则：
-1. 只输出一个阿拉伯数字（1-5），代表最佳字幕的序号
-2. 不要输出任何其他文字、标点或解释
+1. 输出所有序号，用英文逗号分隔，从最佳到最差
+2. 不要输出任何其他文字
 3. 优先选择名称与视频文件最相似的字幕
-4. 如果都相似，优先选择带""精校""字样的
-示例输出：3";
+4. 质量关键词优先级：特效 > 精校 > 官方 > 简中 > 中文
+5. ASS 格式优于 SRT
+示例输出：3,1,5,2,4";
                 var userMessage = $"视频文件: {videoName}\n候选字幕:\n{candidateList}";
 
                 var requestBody = new
@@ -456,13 +463,17 @@ namespace Jellyfin.MeiamSub.Thunder
                     stream = false
                 };
 
+                var endpoint = string.IsNullOrEmpty(config.AIEndpoint)
+                    ? "https://tokenhub.tencentmaas.com/v1/chat/completions"
+                    : config.AIEndpoint;
+
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
                 using var httpClient = _httpClientFactory.CreateClient(Name);
                 var json = JsonSerializer.Serialize(requestBody, _deserializeOptions);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 content.Headers.TryAddWithoutValidation("Authorization", $"Bearer {config.AIApiKey}");
 
-                var response = await httpClient.PostAsync("https://tokenhub.tencentmaas.com/v1/chat/completions", content, cts.Token);
+                var response = await httpClient.PostAsync(endpoint, content, cts.Token);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -473,14 +484,25 @@ namespace Jellyfin.MeiamSub.Thunder
                     if (responseObj?.Choices?.Length > 0)
                     {
                         var aiReply = responseObj.Choices[0].Message.Content.Trim();
-                        var firstDigit = aiReply.FirstOrDefault(char.IsDigit);
-                        if (firstDigit != default && int.TryParse(firstDigit.ToString(), out int index) && index >= 1 && index <= topCandidates.Count)
+                        var indices = aiReply
+                            .Split(new[] { ',', '，', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim())
+                            .Select(s => int.TryParse(s, out var n) ? n : 0)
+                            .Where(n => n >= 1 && n <= topCandidates.Count)
+                            .Distinct()
+                            .ToList();
+
+                        if (indices.Count >= topCandidates.Count / 2)
                         {
-                            var bestSub = topCandidates[index - 1];
-                            var reordered = new List<RemoteSubtitleInfo> { bestSub };
-                            reordered.AddRange(candidates.Where(s => s != bestSub));
-                            _logger.LogInformation($"{Name} AI Filter | Recommended -> [{index}] {bestSub.Name}");
+                            var reordered = indices.Select(i => topCandidates[i - 1]).ToList();
+                            reordered.AddRange(topCandidates.Where(s => !reordered.Contains(s)));
+                            reordered.AddRange(candidates.Skip(topCandidates.Count));
+                            _logger.LogInformation($"{Name} AI Filter | Sequence -> {string.Join(",", indices)}");
                             return reordered;
+                        }
+                        else
+                        {
+                            _logger.LogInformation($"{Name} AI Filter | Invalid sequence, fallback to sort. Reply: {aiReply}");
                         }
                     }
                 }

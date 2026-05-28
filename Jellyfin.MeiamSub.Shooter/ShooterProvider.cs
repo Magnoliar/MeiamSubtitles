@@ -224,7 +224,7 @@ namespace Jellyfin.MeiamSub.Shooter
 
                         remoteSubtitles = remoteSubtitles
                             .OrderByDescending(s => ComputeNameSimilarity(fileName, s.Name))
-                            .ThenByDescending(s => ContainsJingJiao(s.Name))
+                            .ThenByDescending(s => GetQualityScore(s.Name))
                             .ThenByDescending(s => GetFormatPriority(s.Format))
                             .ToList();
 
@@ -343,11 +343,17 @@ namespace Jellyfin.MeiamSub.Shooter
         }
 
         /// <summary>
-        /// 检查名称是否包含"精校"标记
+        /// 字幕质量关键词评分：特效(5) > 精校(4) > 官方(3) > 简中(2) > 中文(1)
         /// </summary>
-        private static bool ContainsJingJiao(string name)
+        private static int GetQualityScore(string name)
         {
-            return !string.IsNullOrEmpty(name) && name.Contains("精校", StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(name)) return 0;
+            if (name.Contains("特效", StringComparison.OrdinalIgnoreCase)) return 5;
+            if (name.Contains("精校", StringComparison.OrdinalIgnoreCase)) return 4;
+            if (name.Contains("官方", StringComparison.OrdinalIgnoreCase)) return 3;
+            if (name.Contains("简中", StringComparison.OrdinalIgnoreCase)) return 2;
+            if (name.Contains("中文", StringComparison.OrdinalIgnoreCase)) return 1;
+            return 0;
         }
 
         /// <summary>

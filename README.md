@@ -56,6 +56,11 @@ A: 不需要。插件通过验证码自动识别完成下载，无需账号。
 **Q: 安装后会影响 OpenSubtitles 吗？**
 A: 不会。本插件优先级 (Order) 设为 100，确保官方插件优先。
 
+## 致谢
+
+- 感谢 [91270/Emby.MeiamSub](https://github.com/91270/Emby.MeiamSub) 提供的原始项目框架
+- 感谢 [service.subtitles.chinesesubtitles](https://github.com/taxigps/service.subtitles.chinesesubtitles) 提供的 SubHD/Zimuku 字幕源实现参考
+
 ## 许可
 
 Apache License 2.0

@@ -34,7 +34,7 @@ namespace Emby.MeiamSub.SubHD
         protected readonly ILogger _logger;
         private readonly IJsonSerializer _jsonSerializer;
         private readonly IHttpClient _httpClient;
-        private readonly IServiceRoot _serviceRoot;
+        private readonly IApplicationHost _applicationHost;
 
         private Plugin MainPlugin { get; set; }
 
@@ -53,8 +53,8 @@ namespace Emby.MeiamSub.SubHD
             _logger = logManager.GetLogger(GetType().Name);
             _jsonSerializer = jsonSerializer;
             _httpClient = httpClient;
-            _serviceRoot = new ServiceRoot(applicationHost);
-            MainPlugin = _serviceRoot.GetService<IApplicationHost>().Plugins.OfType<Plugin>().FirstOrDefault();
+            _applicationHost = applicationHost;
+            MainPlugin = applicationHost.Plugins.OfType<Plugin>().FirstOrDefault();
 
             _logger.Info("{0} Init", new object[1] { Name });
         }
@@ -104,7 +104,7 @@ namespace Emby.MeiamSub.SubHD
 
                 if (string.IsNullOrEmpty(doubanId))
                 {
-                    doubanId = await GetDoubanIdFromSearch(request.Name, request.Year);
+                    doubanId = await GetDoubanIdFromSearch(request.Name, null);
                 }
 
                 if (string.IsNullOrEmpty(doubanId))
@@ -300,7 +300,7 @@ namespace Emby.MeiamSub.SubHD
                 Url = "https://subhd.tv/api/sub/down",
                 UserAgent = Name,
                 TimeoutMs = 30000,
-                RequestContent = json,
+                RequestContent = Encoding.UTF8.GetBytes(json),
                 RequestContentType = "application/json",
                 AcceptHeader = "application/json",
             });
@@ -345,7 +345,7 @@ namespace Emby.MeiamSub.SubHD
                             Url = "https://subhd.tv/api/sub/down",
                             UserAgent = Name,
                             TimeoutMs = 30000,
-                            RequestContent = retryJson,
+                            RequestContent = Encoding.UTF8.GetBytes(retryJson),
                             RequestContentType = "application/json",
                             AcceptHeader = "application/json",
                         });

@@ -300,7 +300,7 @@ namespace Emby.MeiamSub.SubHD
                 Url = "https://subhd.tv/api/sub/down",
                 UserAgent = Name,
                 TimeoutMs = 30000,
-                RequestContent = Encoding.UTF8.GetBytes(json),
+                RequestContent = json.AsMemory(),
                 RequestContentType = "application/json",
                 AcceptHeader = "application/json",
             });
@@ -345,7 +345,7 @@ namespace Emby.MeiamSub.SubHD
                             Url = "https://subhd.tv/api/sub/down",
                             UserAgent = Name,
                             TimeoutMs = 30000,
-                            RequestContent = Encoding.UTF8.GetBytes(retryJson),
+                            RequestContent = retryJson.AsMemory(),
                             RequestContentType = "application/json",
                             AcceptHeader = "application/json",
                         });

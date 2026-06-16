@@ -13,7 +13,7 @@ namespace Jellyfin.MeiamSub.Zimuku.Captcha
     /// </summary>
     public class ZimukuCaptchaSolver
     {
-        private readonly ILogger<ZimukuCaptchaSolver> _logger;
+        private readonly ILogger _logger;
 
         // 每个字符采样 9 个像素位置 (x, y)，用于与模板匹配
         // 这些位置经过精心选择，能有效区分 0-9 数字
@@ -51,7 +51,7 @@ namespace Jellyfin.MeiamSub.Zimuku.Captcha
             { 9, new int[] { 1, 1, 1, 1, 1, 1, 0, 1, 1 } },
         };
 
-        public ZimukuCaptchaSolver(ILogger<ZimukuCaptchaSolver> logger)
+        public ZimukuCaptchaSolver(ILogger logger)
         {
             _logger = logger;
         }

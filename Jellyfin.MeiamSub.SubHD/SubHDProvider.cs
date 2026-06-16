@@ -108,7 +108,7 @@ namespace Jellyfin.MeiamSub.SubHD
 
                 if (string.IsNullOrEmpty(doubanId))
                 {
-                    doubanId = await GetDoubanIdFromSearch(request.Name, request.Year, cancellationToken);
+                    doubanId = await GetDoubanIdFromSearch(Path.GetFileNameWithoutExtension(request.MediaPath), null, cancellationToken);
                 }
 
                 if (string.IsNullOrEmpty(doubanId))

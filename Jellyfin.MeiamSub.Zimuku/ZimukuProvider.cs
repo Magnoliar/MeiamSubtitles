@@ -69,7 +69,7 @@ namespace Jellyfin.MeiamSub.Zimuku
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
-            _captchaSolver = new ZimukuCaptchaSolver(logger);
+            _captchaSolver = new ZimukuCaptchaSolver(logger as ILogger);
             _logger.LogInformation($"{Name} Init");
         }
         #endregion
@@ -184,9 +184,9 @@ namespace Jellyfin.MeiamSub.Zimuku
             // 如果是 IMDB ID，先通过豆瓣搜索转换
             var searchTitle = string.Empty;
 
-            if (!string.IsNullOrEmpty(request.ProviderIds?.ImdbId))
+            if (request.ProviderIds != null && request.ProviderIds.TryGetValue("ImdbId", out var imdbId) && !string.IsNullOrEmpty(imdbId))
             {
-                searchTitle = request.ProviderIds.ImdbId;
+                searchTitle = imdbId;
                 _logger.LogInformation($"{Name} Search | Using IMDB ID -> {searchTitle}");
             }
             else if (!string.IsNullOrEmpty(request.Name))
@@ -215,9 +215,9 @@ namespace Jellyfin.MeiamSub.Zimuku
                 var httpClient = _httpClientFactory.CreateClient(Name);
 
                 // 尝试直接通过 IMDB ID 在 Zimuku 搜索
-                if (!string.IsNullOrEmpty(request.ProviderIds?.ImdbId))
+                if (request.ProviderIds != null && request.ProviderIds.TryGetValue("ImdbId", out var imdbSearchId) && !string.IsNullOrEmpty(imdbSearchId))
                 {
-                    var imdbSearchUrl = $"{ZimukuBaseUrl}/search?q={request.ProviderIds.ImdbId}&chost=zimuku.org";
+                    var imdbSearchUrl = $"{ZimukuBaseUrl}/search?q={imdbSearchId}&chost=zimuku.org";
                     var imdbResponse = await FetchPageWithCaptchaAsync(httpClient, imdbSearchUrl, cancellationToken);
                     if (imdbResponse != null && SubPageRegex.IsMatch(imdbResponse))
                     {

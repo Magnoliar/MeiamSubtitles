@@ -197,9 +197,11 @@ namespace Emby.MeiamSub.Zimuku
         {
             var searchTitle = string.Empty;
 
-            if (!string.IsNullOrEmpty(request.ProviderIds?.ImdbId))
+            string imdbId = null;
+            request.ProviderIds?.TryGetValue("ImdbId", out imdbId);
+            if (!string.IsNullOrEmpty(imdbId))
             {
-                searchTitle = request.ProviderIds.ImdbId;
+                searchTitle = imdbId;
                 _logger.Info("{0} Search | Using IMDB ID -> {1}", new object[2] { Name, searchTitle });
             }
             else if (!string.IsNullOrEmpty(request.Name))
@@ -221,9 +223,11 @@ namespace Emby.MeiamSub.Zimuku
             try
             {
                 // 尝试直接通过 IMDB ID 在 Zimuku 搜索
-                if (!string.IsNullOrEmpty(request.ProviderIds?.ImdbId))
+                string imdbSearchId = null;
+                request.ProviderIds?.TryGetValue("ImdbId", out imdbSearchId);
+                if (!string.IsNullOrEmpty(imdbSearchId))
                 {
-                    var imdbSearchUrl = $"{ZimukuBaseUrl}/search?q={request.ProviderIds.ImdbId}&chost=zimuku.org";
+                    var imdbSearchUrl = $"{ZimukuBaseUrl}/search?q={imdbSearchId}&chost=zimuku.org";
                     var imdbResponse = await FetchPageWithCaptchaAsync(imdbSearchUrl, cancellationToken);
                     if (imdbResponse != null && SubPageRegex.IsMatch(imdbResponse))
                     {

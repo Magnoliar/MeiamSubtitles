@@ -248,10 +248,6 @@ namespace Emby.MeiamSub.Zimuku
                     UserAgent = UserAgent,
                     TimeoutMs = 30000,
                     AcceptHeader = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    RequestHeaders = new Dictionary<string, string>
-                    {
-                        { "Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8" }
-                    }
                 };
 
                 var response = await _httpClient.GetResponse(options);
@@ -463,7 +459,7 @@ namespace Emby.MeiamSub.Zimuku
                         {
                             DetailUrl = detailUrl,
                             Language = languageStr,
-                            TwoLetterISOLanguageName = request.TwoLetterISOLanguageName,
+                            TwoLetterISOLanguageName = request.Language,
                             Format = ExtractFormat(format),
                             Name = $"[MEIAMSUB] {langFlags} | {team} | Zimuku"
                         };
@@ -596,28 +592,12 @@ namespace Emby.MeiamSub.Zimuku
                             UserAgent = UserAgent,
                             TimeoutMs = 30000,
                             AcceptHeader = "*/*",
-                            RequestHeaders = new Dictionary<string, string>
-                            {
-                                { "Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8" },
-                                { "Referer", ZimukuBaseUrl + "/" }
-                            }
                         };
 
                         var response = await _httpClient.GetResponse(downloadOptions);
 
                         if (response.StatusCode == HttpStatusCode.OK)
                         {
-                            // Check content length from headers if available
-                            if (response.ContentHeaders != null)
-                            {
-                                var contentLength = response.ContentHeaders.ContentLength ?? 0;
-                                if (contentLength > 0 && contentLength < 1024)
-                                {
-                                    _logger.Info("{0} DownloadSub | Skipping small file ({1} bytes) -> {2}", new object[3] { Name, contentLength, candidateUrl });
-                                    continue;
-                                }
-                            }
-
                             // Read the full stream to check size
                             var memoryStream = new MemoryStream();
                             await response.Content.CopyToAsync(memoryStream);
@@ -675,11 +655,6 @@ namespace Emby.MeiamSub.Zimuku
                         UserAgent = UserAgent,
                         TimeoutMs = 30000,
                         AcceptHeader = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                        RequestHeaders = new Dictionary<string, string>
-                        {
-                            { "Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8" },
-                            { "Referer", ZimukuBaseUrl + "/" }
-                        }
                     };
 
                     var response = await _httpClient.GetResponse(options);
@@ -722,11 +697,6 @@ namespace Emby.MeiamSub.Zimuku
                         UserAgent = UserAgent,
                         TimeoutMs = 30000,
                         AcceptHeader = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                        RequestHeaders = new Dictionary<string, string>
-                        {
-                            { "Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8" },
-                            { "Referer", ZimukuBaseUrl + "/" }
-                        }
                     };
 
                     var submitResponse = await _httpClient.GetResponse(submitOptions);

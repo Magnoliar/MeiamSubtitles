@@ -41,7 +41,7 @@ namespace Emby.MeiamSub.Zimuku
         protected readonly ILogger _logger;
         private readonly IJsonSerializer _jsonSerializer;
         private readonly IHttpClient _httpClient;
-        private readonly IServiceRoot _serviceRoot;
+        private readonly IApplicationHost _applicationHost;
         private readonly ZimukuCaptchaSolver _captchaSolver;
 
         private Plugin MainPlugin { get; set; }
@@ -79,8 +79,8 @@ namespace Emby.MeiamSub.Zimuku
             _logger = logManager.GetLogger(GetType().Name);
             _jsonSerializer = jsonSerializer;
             _httpClient = httpClient;
-            _serviceRoot = new ServiceRoot(applicationHost);
-            MainPlugin = _serviceRoot.GetService<IApplicationHost>().Plugins.OfType<Plugin>().FirstOrDefault();
+            _applicationHost = applicationHost;
+            MainPlugin = applicationHost.Plugins.OfType<Plugin>().FirstOrDefault();
             _captchaSolver = new ZimukuCaptchaSolver(_logger);
 
             _logger.Info("{0} Init", new object[1] { Name });

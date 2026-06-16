@@ -199,7 +199,7 @@ namespace Jellyfin.MeiamSub.SubHD
                 var detailHtml = await detailResponse.Content.ReadAsStringAsync(cancellationToken);
 
                 // Step 2: 提取下载按钮链接
-                var downLinkMatch = Regex.Match(detailHtml, @"href=""(\/down\/[^\"]+)""", RegexOptions.IgnoreCase);
+                var downLinkMatch = Regex.Match(detailHtml, @"href=""(\/down\/[^""]+)""", RegexOptions.IgnoreCase);
                 if (!downLinkMatch.Success)
                 {
                     // 备用匹配

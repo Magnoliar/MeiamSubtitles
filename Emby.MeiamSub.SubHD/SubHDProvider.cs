@@ -193,7 +193,7 @@ namespace Emby.MeiamSub.SubHD
                 var detailHtml = ReadStreamToString(detailResponse.Content);
 
                 // Step 2: 提取下载按钮链接
-                var downLinkMatch = Regex.Match(detailHtml, @"href=""(\/down\/[^\"]+)""", RegexOptions.IgnoreCase);
+                var downLinkMatch = Regex.Match(detailHtml, @"href=""(\/down\/[^""]+)""", RegexOptions.IgnoreCase);
                 if (!downLinkMatch.Success)
                 {
                     // 备用匹配

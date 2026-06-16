@@ -15,7 +15,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -46,3 +46,27 @@ jobs:
         with:
           name: Jellyfin.MeiamSub.Thunder
           path: Release/Jellyfin.MeiamSub.Thunder.dll
+
+      - name: Upload Emby.SubHD DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Emby.MeiamSub.SubHD
+          path: Release/netstandard2.1/Emby.MeiamSub.SubHD.dll
+
+      - name: Upload Emby.Zimuku DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Emby.MeiamSub.Zimuku
+          path: Release/netstandard2.1/Emby.MeiamSub.Zimuku.dll
+
+      - name: Upload Jellyfin.SubHD DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jellyfin.MeiamSub.SubHD
+          path: Release/Jellyfin.MeiamSub.SubHD.dll
+
+      - name: Upload Jellyfin.Zimuku DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jellyfin.MeiamSub.Zimuku
+          path: Release/Jellyfin.MeiamSub.Zimuku.dll

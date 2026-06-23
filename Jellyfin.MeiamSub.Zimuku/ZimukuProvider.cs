@@ -563,8 +563,10 @@ namespace Jellyfin.MeiamSub.Zimuku
                     return new SubtitleResponse();
                 }
 
-                // 4. 查找所有下载链接 (div.clearfix 中的 <a> 标签)
-                var linkMatches = Regex.Matches(downloadPageHtml, @"<a\s+href=""([^""]+)""[^>]*>", RegexOptions.IgnoreCase);
+                // 4. 查找下载链接 (div.clearfix 中的 <a> 标签)
+                var clearfixMatch = Regex.Match(downloadPageHtml, @"<div\s+class=""clearfix"">([\s\S]*?)</div>", RegexOptions.IgnoreCase);
+                var linkSection = clearfixMatch.Success ? clearfixMatch.Groups[1].Value : downloadPageHtml;
+                var linkMatches = Regex.Matches(linkSection, @"<a\s+href=""([^""]+)""[^>]*>", RegexOptions.IgnoreCase);
                 var candidateUrls = new List<string>();
 
                 foreach (Match linkMatch in linkMatches)
@@ -592,23 +594,25 @@ namespace Jellyfin.MeiamSub.Zimuku
 
                         if (response.StatusCode == HttpStatusCode.OK)
                         {
-                            var contentLength = response.Content.Headers.ContentLength ?? 0;
-                            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                            // 用 MemoryStream 缓冲，避免非 Seek 流的 Length 异常
+                            var memoryStream = new MemoryStream();
+                            await response.Content.CopyToAsync(memoryStream, cancellationToken);
+                            memoryStream.Position = 0;
 
-                            if (contentLength > 1024 || stream.Length > 1024)
+                            if (memoryStream.Length > 1024)
                             {
-                                _logger.LogInformation($"{Name} DownloadSub | Success -> {candidateUrl} (size: {contentLength})");
+                                _logger.LogInformation($"{Name} DownloadSub | Success -> {candidateUrl} (size: {memoryStream.Length})");
 
                                 return new SubtitleResponse
                                 {
                                     Language = downloadSub.Language,
                                     IsForced = false,
                                     Format = downloadSub.Format,
-                                    Stream = stream,
+                                    Stream = memoryStream,
                                 };
                             }
 
-                            stream.Dispose();
+                            memoryStream.Dispose();
                         }
                     }
                     catch (Exception ex)

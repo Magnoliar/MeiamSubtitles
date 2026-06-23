@@ -562,8 +562,10 @@ namespace Emby.MeiamSub.Zimuku
                     return new SubtitleResponse();
                 }
 
-                // 4. 查找所有下载链接 (div.clearfix 中的 <a> 标签)
-                var linkMatches = Regex.Matches(downloadPageHtml, @"<a\s+href=""([^""]+)""[^>]*>", RegexOptions.IgnoreCase);
+                // 4. 查找下载链接 (div.clearfix 中的 <a> 标签)
+                var clearfixMatch = Regex.Match(downloadPageHtml, @"<div\s+class=""clearfix"">([\s\S]*?)</div>", RegexOptions.IgnoreCase);
+                var linkSection = clearfixMatch.Success ? clearfixMatch.Groups[1].Value : downloadPageHtml;
+                var linkMatches = Regex.Matches(linkSection, @"<a\s+href=""([^""]+)""[^>]*>", RegexOptions.IgnoreCase);
                 var candidateUrls = new List<string>();
 
                 foreach (Match linkMatch in linkMatches)
